@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Multi-Junction Thin-Film Solar Cell Simulation</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: #060c18; font-family: 'Courier New', monospace; min-height: 100vh; display: flex; justify-content: center; align-items: flex-start; padding: 16px; }
+  #sim-root { width: 700px; border: 1px solid rgba(100,200,255,0.2); border-radius: 10px; overflow: hidden; box-shadow: 0 0 40px rgba(0,100,200,0.15); }
+
+  /* Control Panel */
+  #ctrl-panel {
+    background: linear-gradient(180deg, #0d1f3c 0%, #0a1628 100%);
+    border-bottom: 1px solid rgba(100,200,255,0.2);
+    padding: 14px 16px 12px;
+    position: relative;
+    overflow: hidden;
+  }
+  #ctrl-panel::before {
+    content: '';
+    position: absolute; inset: 0;
+    background:
+      repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(100,200,255,0.04) 40px),
+      repeating-linear-gradient(0deg, transparent, transparent 19px, rgba(100,200,255,0.04) 20px);
+    pointer-events: none;
+  }
+  #ctrl-panel::after {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(100,200,255,0.5), transparent);
+  }
+  .panel-title {
+    font-size: 11px; letter-spacing: 3px;
+    color: rgba(100,200,255,0.7); text-transform: uppercase;
+    margin-bottom: 12px; position: relative;
+  }
+  .ctrl-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 20px; position: relative; }
+  .ctrl-block {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(100,200,255,0.15);
+    border-radius: 6px; padding: 8px 10px;
+  }
+  .ctrl-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+  .ctrl-name { font-size: 10px; letter-spacing: 2px; color: rgba(100,200,255,0.6); text-transform: uppercase; }
+  .ctrl-readout { font-size: 14px; font-weight: 700; color: #64c8ff; font-variant-numeric: tabular-nums; }
+  .ctrl-sublabel { font-size: 10px; color: rgba(100,200,255,0.5); margin-top: 5px; min-height: 13px; letter-spacing: .5px; }
+
+  input[type=range] {
+    width: 100%; -webkit-appearance: none; appearance: none;
+    height: 3px; background: rgba(100,200,255,0.2); border-radius: 2px;
+    outline: none; cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%;
+    background: #64c8ff; box-shadow: 0 0 8px rgba(100,200,255,0.8); cursor: pointer;
+    transition: background .15s, box-shadow .15s;
+  }
+  input[type=range]::-webkit-slider-thumb:hover { background: #fff; box-shadow: 0 0 14px rgba(100,200,255,1); }
+  input[type=range]::-moz-range-thumb {
+    width: 14px; height: 14px; border-radius: 50%; border: none;
+    background: #64c8ff; box-shadow: 0 0 8px rgba(100,200,255,0.8); cursor: pointer;
+  }
+
+  .eff-marks { display: flex; justify-content: space-between; margin-top: 6px; }
+  .eff-mark { font-size: 9px; color: rgba(100,200,255,0.35); letter-spacing: .3px; text-align: center; line-height: 1.4; }
+
+  /* Stats Row */
+  #stats-row {
+    display: grid; grid-template-columns: repeat(4,1fr); gap: 8px;
+    padding: 8px 16px; background: rgba(0,0,0,0.4);
+    border-bottom: 1px solid rgba(100,200,255,0.1);
+  }
+  .stat-box {
+    background: rgba(100,200,255,0.06);
+    border: 1px solid rgba(100,200,255,0.12);
+    border-radius: 5px; padding: 6px 8px; text-align: center;
+  }
+  .stat-l { font-size: 9px; letter-spacing: 1.5px; color: rgba(100,200,255,0.5); text-transform: uppercase; margin-bottom: 3px; }
+  .stat-v { font-size: 16px; font-weight: 700; color: #64c8ff; font-variant-numeric: tabular-nums; }
+
+  /* Canvas */
+  #canvas-wrap { line-height: 0; background: #080d18; }
+  #sim-canvas { display: block; width: 100%; image-rendering: crisp-edges; }
+
+  /* Legend */
+  #legend {
+    display: flex; flex-wrap: wrap; gap: 5px 14px;
+    padding: 8px 16px; background: rgba(0,0,0,0.5);
+    border-top: 1px solid rgba(100,200,255,0.1);
+  }
+  .leg { display: flex; align-items: center; gap: 4px; font-size: 9px; letter-spacing: .8px; color: rgba(100,200,255,0.5); text-transform: uppercase; }
+  .leg-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .leg-rect { width: 12px; height: 6px; border-radius: 1px; flex-shrink: 0; }
+</style>
+</head>
+<body>
+<div id="sim-root">
+
+  <!-- Control Panel -->
+  <div id="ctrl-panel">
+    <div class="panel-title">⬡ Multi-junction thin-film solar cell — control interface</div>
+    <div class="ctrl-grid">
+
+      <div class="ctrl-block">
+        <div class="ctrl-header">
+          <span class="ctrl-name">Photon flux</span>
+          <span class="ctrl-readout" id="photon-val">70%</span>
+        </div>
+        <input type="range" id="photon-slider" min="0" max="100" value="70" step="1">
+        <div class="ctrl-sublabel" id="condition-label">☀ Bright midday sun</div>
+      </div>
+
+      <div class="ctrl-block">
+        <div class="ctrl-header">
+          <span class="ctrl-name">Efficiency</span>
+          <span class="ctrl-readout" id="eff-val">48%</span>
+        </div>
+        <input type="range" id="eff-slider" min="0" max="48" value="48" step="1">
+        <div class="eff-marks">
+          <span class="eff-mark">26%<br>1st-gen</span>
+          <span class="eff-mark">29%<br>GaAs</span>
+          <span class="eff-mark">48%<br>MJ conc.</span>
+        </div>
+        <div class="ctrl-sublabel" id="eff-note">← Multi-junction concentrator thin-film cell</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div id="stats-row">
+    <div class="stat-box"><div class="stat-l">Photons/s ×10⁶</div><div class="stat-v" id="s-photons">350</div></div>
+    <div class="stat-box"><div class="stat-l">Power output W</div><div class="stat-v" id="s-power">168</div></div>
+    <div class="stat-box"><div class="stat-l">Efficiency</div><div class="stat-v" id="s-eff">48%</div></div>
+    <div class="stat-box"><div class="stat-l">House coverage</div><div class="stat-v" id="s-house">84%</div></div>
+  </div>
+
+  <!-- Canvas -->
+  <div id="canvas-wrap">
+    <canvas id="sim-canvas"></canvas>
+  </div>
+
+  <!-- Legend -->
+  <div id="legend">
+    <div class="leg"><div class="leg-dot" style="background:#F9CB42"></div>Photon γ</div>
+    <div class="leg"><div class="leg-dot" style="background:#5DCAA5"></div>Electron e⁻</div>
+    <div class="leg"><div class="leg-dot" style="background:#F09995"></div>Hole h⁺</div>
+    <div class="leg"><div class="leg-rect" style="background:#378ADD88"></div>a-Si layer</div>
+    <div class="leg"><div class="leg-rect" style="background:#1D9E7588"></div>CIGS layer</div>
+    <div class="leg"><div class="leg-rect" style="background:#D85A3088"></div>CdTe layer</div>
+    <div class="leg"><div class="leg-dot" style="background:#EF9F27"></div>Cd atom</div>
+    <div class="leg"><div class="leg-dot" style="background:#534AB7"></div>Te atom</div>
+    <div class="leg"><div class="leg-dot" style="background:#D4537E"></div>Cu/In/Ga</div>
+    <div class="leg"><div class="leg-dot" style="background:#aaa"></div>Si atom</div>
+  </div>
+
+</div>
+
+<script>
+// ── Canvas setup (3× DPR for sharpness) ──────────────────────────────────
+const canvas = document.getElementById('sim-canvas');
+const ctx    = canvas.getContext('2d');
+const DPR = 3, CW = 700, CH = 560;
+canvas.width  = CW * DPR;
+canvas.height = CH * DPR;
+canvas.style.width  = CW + 'px';
+canvas.style.height = CH + 'px';
+ctx.scale(DPR, DPR);
+
+const TXT2 = 'rgba(100,180,220,0.62)';
+const BDR  = 'rgba(100,200,255,0.18)';
+const CYAN = '#64c8ff';
+
+// ── Layer stack ───────────────────────────────────────────────────────────
+const CELL_X = 28, CELL_W = 308;
+const LAYERS = [
+  { name:'Top metal contact (Al)',                          y:34,  h:18, color:'#888780', alpha:.9,  atoms:null },
+  { name:'a-Si:H — amorphous silicon\n(top junction, ~1.7 eV)', y:52,  h:74, color:'#185FA5', alpha:.55, atoms:'Si' },
+  { name:'Tunnel junction',                                 y:126, h:10, color:'#2a3a4a', alpha:.8,  atoms:null },
+  { name:'CIGS — Cu(In,Ga)Se2\n(mid junction, ~1.1 eV)',   y:136, h:82, color:'#0F6E56', alpha:.55, atoms:'CIGS' },
+  { name:'Tunnel junction',                                 y:218, h:10, color:'#2a3a4a', alpha:.8,  atoms:null },
+  { name:'CdTe\n(bottom junction, ~1.45 eV)',               y:228, h:92, color:'#993C1D', alpha:.55, atoms:'CdTe' },
+  { name:'Back contact Mo/ITO',                             y:320, h:18, color:'#3a3a36', alpha:.9,  atoms:null },
+  { name:'Glass substrate',                                 y:338, h:22, color:'#0C447C', alpha:.35, atoms:null },
+];
+
+// ── Atom lattice ──────────────────────────────────────────────────────────
+function makeAtoms(layer, type) {
+  var arr = [];
+  var cols = 15, rows = Math.max(2, Math.floor((layer.h - 8) / 13));
+  for (var r = 0; r < rows; r++) {
+    for (var c = 0; c < cols; c++) {
+      var offset = (r % 2) * ((CELL_W - 36) / (cols - 1) / 2);
+      arr.push({
+        x: CELL_X + 18 + c * (CELL_W - 36) / (cols - 1) + offset,
+        y: layer.y + 9 + r * (layer.h - 16) / Math.max(rows - 1, 1),
+        type: type, idx: r * cols + c
+      });
+    }
+  }
+  return arr;
+}
+
+var ALL_ATOMS = LAYERS.map(function(l) { return l.atoms ? makeAtoms(l, l.atoms) : []; });
+
+function getBonds(atoms) {
+  var byRow = {}, result = [];
+  atoms.forEach(function(a) {
+    var key = Math.round(a.y * 2);
+    if (!byRow[key]) byRow[key] = [];
+    byRow[key].push(a);
+  });
+  Object.values(byRow).forEach(function(row) {
+    row.sort(function(a,b){ return a.x - b.x; });
+    for (var i = 0; i < row.length - 1; i++) result.push([row[i], row[i+1]]);
+  });
+  return result;
+}
+var ALL_BONDS = ALL_ATOMS.map(function(a) { return a.length ? getBonds(a) : []; });
+
+// ── Particles ─────────────────────────────────────────────────────────────
+var photons = [], electrons = [], holes = [];
+var photonCount = 70, effPct = 48;
+
+function spawnPhoton() {
+  return { x: CELL_X + 12 + Math.random() * (CELL_W - 24), y: -16,
+    vy: 1.7 + Math.random() * 1.4, vx: (Math.random() - .5) * .55,
+    absorbed: false, alpha: 1, r: 5.5, pulse: Math.random() * Math.PI * 2 };
+}
+function spawnElectron(x, y) {
+  return { x:x, y:y, vx:(Math.random()-.5)*1.5, vy:-(0.7+Math.random()*1.3), alpha:1, r:5, age:0 };
+}
+function spawnHole(x, y) {
+  return { x:x, y:y, vx:(Math.random()-.5)*1.5, vy:0.7+Math.random()*1.1, alpha:1, r:4.5, age:0 };
+}
+
+// ── Draw: atoms ──────────────────────────────────────────────────────────
+function drawAtom(a) {
+  var colorMap = { Si:'#9ca3af', CIGS_0:'#D4537E', CIGS_1:'#1D9E75', CIGS_2:'#EF9F27', CdTe_0:'#EF9F27', CdTe_1:'#534AB7' };
+  var labelMap = { Si:'Si', CIGS_0:'Cu', CIGS_1:'In', CIGS_2:'Ga', CdTe_0:'Cd', CdTe_1:'Te' };
+  var key = a.type;
+  if (a.type === 'CIGS') key = 'CIGS_' + (a.idx % 3);
+  if (a.type === 'CdTe') key = 'CdTe_' + (a.idx % 2);
+  var c = colorMap[key] || '#aaa';
+  var lb = labelMap[key] || '';
+  var r = a.type === 'Si' ? 3.8 : 4.7;
+  var grd = ctx.createRadialGradient(a.x, a.y, 0, a.x, a.y, r + 4);
+  grd.addColorStop(0, c + 'aa'); grd.addColorStop(1, c + '00');
+  ctx.beginPath(); ctx.arc(a.x, a.y, r + 4, 0, Math.PI * 2); ctx.fillStyle = grd; ctx.fill();
+  ctx.beginPath(); ctx.arc(a.x, a.y, r, 0, Math.PI * 2); ctx.fillStyle = c; ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.25)'; ctx.lineWidth = 0.5; ctx.stroke();
+  if (lb) {
+    ctx.font = 'bold 7px monospace'; ctx.fillStyle = 'rgba(255,255,255,0.72)';
+    ctx.textAlign = 'center'; ctx.fillText(lb, a.x, a.y + r + 7.5);
+  }
+}
+
+function drawBonds(bonds, color) {
+  ctx.strokeStyle = color; ctx.lineWidth = 0.6;
+  bonds.forEach(function(pair) {
+    ctx.beginPath(); ctx.moveTo(pair[0].x, pair[0].y); ctx.lineTo(pair[1].x, pair[1].y); ctx.stroke();
+  });
+}
+
+function drawLayers() {
+  LAYERS.forEach(function(l, i) {
+    ctx.save(); ctx.globalAlpha = l.alpha; ctx.fillStyle = l.color; ctx.fillRect(CELL_X, l.y, CELL_W, l.h); ctx.restore();
+    ctx.save(); ctx.globalAlpha = 0.1; ctx.fillStyle = '#fff'; ctx.fillRect(CELL_X, l.y, CELL_W, 2); ctx.restore();
+    ctx.strokeStyle = BDR; ctx.lineWidth = 0.5; ctx.strokeRect(CELL_X, l.y, CELL_W, l.h);
+    if (ALL_BONDS[i].length) {
+      var bc = i === 1 ? 'rgba(130,180,255,0.22)' : i === 3 ? 'rgba(30,160,110,0.28)' : 'rgba(200,100,50,0.22)';
+      drawBonds(ALL_BONDS[i], bc);
+    }
+    ALL_ATOMS[i].forEach(function(a) { drawAtom(a); });
+    var lx = CELL_X + CELL_W + 10, ly = l.y + l.h / 2;
+    ctx.font = '9.5px monospace'; ctx.fillStyle = TXT2; ctx.textAlign = 'left';
+    var lines = l.name.split('\n');
+    lines.forEach(function(ln, li) { ctx.fillText(ln, lx, ly - (lines.length - 1) * 6 + li * 12); });
+    ctx.strokeStyle = 'rgba(100,200,255,0.15)'; ctx.lineWidth = 0.5;
+    ctx.beginPath(); ctx.moveTo(CELL_X + CELL_W, ly); ctx.lineTo(lx - 2, ly); ctx.stroke();
+  });
+}
+
+function drawParticles() {
+  var now = Date.now();
+  photons.forEach(function(p) {
+    if (p.absorbed) return;
+    var pulse = 0.8 + 0.2 * Math.sin(now / 120 + p.pulse);
+    ctx.save(); ctx.globalAlpha = p.alpha * pulse;
+    var g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r + 8);
+    g.addColorStop(0, 'rgba(249,203,66,0.75)'); g.addColorStop(1, 'rgba(249,203,66,0)');
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.r + 8, 0, Math.PI * 2); ctx.fillStyle = g; ctx.fill();
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fillStyle = '#F9CB42'; ctx.fill();
+    ctx.font = 'bold 8.5px monospace'; ctx.fillStyle = '#2a1400'; ctx.textAlign = 'center';
+    ctx.fillText('γ', p.x, p.y + 3); ctx.restore();
+  });
+  electrons.forEach(function(e) {
+    var a = Math.max(0, 1 - e.age / 90);
+    ctx.save(); ctx.globalAlpha = a;
+    var g = ctx.createRadialGradient(e.x, e.y, 0, e.x, e.y, e.r + 5);
+    g.addColorStop(0, 'rgba(93,202,165,0.75)'); g.addColorStop(1, 'rgba(93,202,165,0)');
+    ctx.beginPath(); ctx.arc(e.x, e.y, e.r + 5, 0, Math.PI * 2); ctx.fillStyle = g; ctx.fill();
+    ctx.beginPath(); ctx.arc(e.x, e.y, e.r, 0, Math.PI * 2); ctx.fillStyle = '#5DCAA5'; ctx.fill();
+    ctx.font = 'bold 8px monospace'; ctx.fillStyle = '#04342C'; ctx.textAlign = 'center';
+    ctx.fillText('e-', e.x, e.y + 3); ctx.restore();
+  });
+  holes.forEach(function(h) {
+    var a = Math.max(0, 1 - h.age / 90);
+    ctx.save(); ctx.globalAlpha = a;
+    var g = ctx.createRadialGradient(h.x, h.y, 0, h.x, h.y, h.r + 5);
+    g.addColorStop(0, 'rgba(240,153,149,0.75)'); g.addColorStop(1, 'rgba(240,153,149,0)');
+    ctx.beginPath(); ctx.arc(h.x, h.y, h.r + 5, 0, Math.PI * 2); ctx.fillStyle = g; ctx.fill();
+    ctx.beginPath(); ctx.arc(h.x, h.y, h.r, 0, Math.PI * 2); ctx.fillStyle = '#F09995'; ctx.fill();
+    ctx.font = 'bold 8px monospace'; ctx.fillStyle = '#501313'; ctx.textAlign = 'center';
+    ctx.fillText('h+', h.x, h.y + 3); ctx.restore();
+  });
+}
+
+function drawWire(fx, fy, tx, ty, energyPct) {
+  var e = Math.min(1, energyPct / 100);
+  var t = Date.now() / 35;
+  ctx.save();
+  ctx.strokeStyle = e > 0.05 ? 'rgba(100,200,255,' + (0.25 + e * 0.5).toFixed(2) + ')' : 'rgba(100,200,255,0.1)';
+  ctx.lineWidth = 2.5; ctx.setLineDash([7, 5]); ctx.lineDashOffset = -(t % 24);
+  ctx.beginPath(); ctx.moveTo(fx, fy);
+  ctx.bezierCurveTo(fx + 60, fy, tx - 60, ty, tx, ty);
+  ctx.stroke(); ctx.setLineDash([]);
+  if (e > 0.1) {
+    var mx = (fx + tx) / 2 + 4, my = (fy + ty) / 2;
+    ctx.globalAlpha = e; ctx.font = '13px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillStyle = CYAN; ctx.fillText('⚡', mx, my + 5);
+  }
+  ctx.restore();
+}
+
+function drawHouse(x, y, powerPct) {
+  var w = 165, h = 132;
+  var glow = Math.min(1, powerPct / 80);
+  if (glow > 0.05) {
+    ctx.save(); ctx.globalAlpha = glow * 0.15;
+    var g = ctx.createRadialGradient(x+w/2, y+h*.65, 10, x+w/2, y+h*.65, w*.72);
+    g.addColorStop(0, '#F9CB42'); g.addColorStop(1, 'transparent');
+    ctx.beginPath(); ctx.ellipse(x+w/2, y+h*.65, w*.72, h*.56, 0, 0, Math.PI*2);
+    ctx.fillStyle = g; ctx.fill(); ctx.restore();
+  }
+  ctx.fillStyle = '#12203a'; ctx.strokeStyle = 'rgba(100,200,255,0.25)'; ctx.lineWidth = 0.8;
+  ctx.beginPath(); ctx.roundRect(x+8, y+50, w-16, h-50, 4); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#1e3a5f';
+  ctx.beginPath(); ctx.moveTo(x+2, y+52); ctx.lineTo(x+w/2, y+4); ctx.lineTo(x+w-2, y+52); ctx.closePath();
+  ctx.fill(); ctx.strokeStyle = 'rgba(100,200,255,0.22)'; ctx.lineWidth = 0.7; ctx.stroke();
+  ctx.fillStyle = '#0d1a2e'; ctx.fillRect(x+w/2-12, y+h-28, 24, 28);
+  ctx.strokeStyle = 'rgba(100,200,255,0.2)'; ctx.lineWidth = 0.5; ctx.strokeRect(x+w/2-12, y+h-28, 24, 28);
+  [x+14, x+w-46].forEach(function(wx) {
+    ctx.save(); ctx.globalAlpha = 0.15 + powerPct/100*0.78;
+    ctx.fillStyle = '#F9CB42'; ctx.fillRect(wx, y+60, 30, 22);
+    ctx.strokeStyle = 'rgba(100,200,255,0.3)'; ctx.lineWidth = 0.5;
+    ctx.beginPath(); ctx.moveTo(wx+15,y+60); ctx.lineTo(wx+15,y+82); ctx.moveTo(wx,y+71); ctx.lineTo(wx+30,y+71); ctx.stroke();
+    ctx.globalAlpha = 1; ctx.strokeStyle = 'rgba(100,200,255,0.28)'; ctx.lineWidth = 0.8; ctx.strokeRect(wx,y+60,30,22); ctx.restore();
+  });
+  ctx.save(); ctx.globalAlpha = 0.6 + powerPct/100*0.4; ctx.fillStyle = '#185FA5';
+  ctx.beginPath(); ctx.moveTo(x+w/2-30,y+38); ctx.lineTo(x+w/2-5,y+19); ctx.lineTo(x+w/2+20,y+29); ctx.lineTo(x+w/2-5,y+48); ctx.closePath();
+  ctx.fill(); ctx.strokeStyle = 'rgba(100,200,255,0.45)'; ctx.lineWidth = 0.5; ctx.stroke(); ctx.restore();
+  ctx.font = '700 11px monospace'; ctx.fillStyle = CYAN; ctx.textAlign = 'center';
+  ctx.fillText(Math.round(powerPct) + '% powered', x+w/2, y+h+18);
+  ctx.font = '10px monospace'; ctx.fillStyle = TXT2; ctx.fillText('home energy output', x+w/2, y+h+32);
+}
+
+function drawEnergyBar(power, maxPower) {
+  var bx = CELL_X, by = 378, bw = CELL_W, bh = 13;
+  ctx.fillStyle = 'rgba(100,200,255,0.07)'; ctx.strokeStyle = 'rgba(100,200,255,0.2)'; ctx.lineWidth = 0.5;
+  ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, 4); ctx.fill(); ctx.stroke();
+  var fill = Math.min(1, power / maxPower) * bw;
+  if (fill > 2) {
+    var grd = ctx.createLinearGradient(bx, by, bx+fill, by);
+    grd.addColorStop(0, '#1D9E75'); grd.addColorStop(0.5, '#EF9F27'); grd.addColorStop(1, '#F9CB42');
+    ctx.fillStyle = grd; ctx.beginPath(); ctx.roundRect(bx, by, fill, bh, 4); ctx.fill();
+  }
+  ctx.font = '10px monospace'; ctx.fillStyle = TXT2; ctx.textAlign = 'left'; ctx.fillText('energy output', bx, by+bh+14);
+  ctx.fillStyle = CYAN; ctx.textAlign = 'right'; ctx.fillText(Math.round(power) + ' W', bx+bw, by+bh+14);
+}
+
+function drawScanlines() {
+  ctx.save(); ctx.globalAlpha = 0.02; ctx.fillStyle = '#000';
+  for (var y = 0; y < CH; y += 2) ctx.fillRect(0, y, CW, 1);
+  ctx.restore();
+}
+
+// ── Physics update ────────────────────────────────────────────────────────
+function update() {
+  var rate = photonCount / 100, eff = effPct / 100;
+  if (Math.random() < rate * 0.9 && photons.filter(function(p){ return !p.absorbed; }).length < 90)
+    photons.push(spawnPhoton());
+
+  photons.forEach(function(p) {
+    if (p.absorbed) { p.alpha -= 0.06; return; }
+    p.x += p.vx; p.y += p.vy;
+    for (var i = 0; i < [1,3,5].length; i++) {
+      var l = LAYERS[[1,3,5][i]];
+      if (p.y >= l.y && p.y <= l.y + l.h && Math.random() < 0.06 * eff * rate) {
+        p.absorbed = true;
+        if (Math.random() < eff) { electrons.push(spawnElectron(p.x, p.y)); holes.push(spawnHole(p.x, p.y)); }
+        break;
+      }
+    }
+    if (p.y > CH + 12 || p.x < 0 || p.x > CW) p.absorbed = true;
+  });
+
+  electrons.forEach(function(e) {
+    e.x += e.vx + (Math.random()-.5)*.4; e.y += e.vy; e.age++;
+    if (e.y < LAYERS[0].y) e.vy = Math.abs(e.vy) * .3;
+  });
+  holes.forEach(function(h) { h.x += h.vx + (Math.random()-.5)*.4; h.y += Math.abs(h.vy)*.85; h.age++; });
+  photons   = photons.filter(function(p){ return p.alpha > 0.01; });
+  electrons = electrons.filter(function(e){ return e.age < 95; });
+  holes     = holes.filter(function(h){ return h.age < 95; });
+}
+
+// ── Main render loop ──────────────────────────────────────────────────────
+function draw() {
+  var gbg = ctx.createLinearGradient(0, 0, 0, CH);
+  gbg.addColorStop(0, '#080d18'); gbg.addColorStop(1, '#0c1828');
+  ctx.fillStyle = gbg; ctx.fillRect(0, 0, CW, CH);
+  ctx.strokeStyle = 'rgba(100,200,255,0.04)'; ctx.lineWidth = 0.5;
+  for (var x = 0; x < CW; x += 40) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,CH); ctx.stroke(); }
+  for (var y = 0; y < CH; y += 20) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(CW,y); ctx.stroke(); }
+
+  drawLayers();
+  drawParticles();
+
+  ctx.font = 'bold 10px monospace'; ctx.fillStyle = 'rgba(249,203,66,0.85)'; ctx.textAlign = 'center';
+  ctx.fillText('↓  incoming photons (γ)  ↓', CELL_X + CELL_W / 2, 26);
+
+  var MAX_POWER = 240 * 1.0 * (48 / 100); // 115.2 W — both sliders at max
+  var power = 240 * (photonCount / 100) * (effPct / 100);
+  drawEnergyBar(power, MAX_POWER);
+  var housePower = Math.min(100, (power / MAX_POWER) * 100);
+  drawHouse(462, 28, housePower);
+  drawWire(CELL_X + CELL_W, 195, 470, 155, housePower);
+  drawScanlines();
+
+  document.getElementById('s-photons').textContent = Math.round(photonCount * 5);
+  document.getElementById('s-power').textContent   = Math.round(power);
+  document.getElementById('s-eff').textContent     = effPct + '%';
+  document.getElementById('s-house').textContent   = Math.round(housePower) + '%';
+
+  update();
+  requestAnimationFrame(draw);
+}
+
+// ── Slider events ─────────────────────────────────────────────────────────
+document.getElementById('photon-slider').addEventListener('input', function() {
+  photonCount = +this.value;
+  document.getElementById('photon-val').textContent = photonCount + '%';
+  var v = photonCount, c = '';
+  if (v === 0)       c = '◼ Night — no sunlight';
+  else if (v < 10)   c = '◑ Pre-dawn twilight';
+  else if (v < 20)   c = '◔ Sunrise / heavy cloud';
+  else if (v < 35)   c = '⛅ Overcast sky';
+  else if (v < 50)   c = '⛅ Partly cloudy';
+  else if (v < 65)   c = '◕ Clear morning / evening sun';
+  else if (v < 80)   c = '☀ Bright midday sun';
+  else if (v < 92)   c = '☀ Direct summer noon sun';
+  else               c = '⊙ Peak solar — concentrator conditions';
+  document.getElementById('condition-label').textContent = c;
+});
+
+document.getElementById('eff-slider').addEventListener('input', function() {
+  effPct = +this.value;
+  document.getElementById('eff-val').textContent = effPct + '%';
+  var n = '';
+  if (effPct === 26)     n = '← Standard efficiency for single-junction first-generation cell';
+  else if (effPct === 29) n = '← Single-junction thin-film GaAs cells';
+  else if (effPct === 48) n = '← Multi-junction concentrator thin-film solar cell';
+  else if (effPct < 26)  n = '— below standard single-junction efficiency';
+  document.getElementById('eff-note').textContent = n;
+});
+
+document.getElementById('photon-slider').dispatchEvent(new Event('input'));
+document.getElementById('eff-slider').dispatchEvent(new Event('input'));
+draw();
+</script>
+</body>
+</html>
