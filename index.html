@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Solar Cell Capstone: What is Stopping Solar?</title>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --gold:#ffd700;--blue-dark:#0a0f1e;--blue-mid:#0d1628;
+    --blue-card:#111e35;--blue-border:#1e3050;
+    --text-primary:#e8f0fa;--text-secondary:#8090a8;--text-muted:#4a5a70;
+    --accent-single:#20a8e0;--accent-multi:#e06840;
+  }
+  body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:var(--blue-dark);color:var(--text-primary);min-height:100vh;overflow-x:hidden}
+  #stars{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0}
+  .hero{position:relative;z-index:1;text-align:center;padding:56px 24px 36px;max-width:860px;margin:0 auto}
+  .eyebrow{font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--gold);margin-bottom:16px;opacity:.85}
+  h1{font-size:clamp(22px,4.5vw,42px);font-weight:700;line-height:1.15;color:#fff;margin-bottom:10px}
+  h1 span{color:var(--gold)}
+  .sub{font-size:14px;color:var(--text-secondary);margin-bottom:5px}
+  .author{font-size:13px;color:var(--text-muted);margin-bottom:32px}
+  .author strong{color:var(--text-secondary);font-weight:500}
+  .divider{width:60px;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin:0 auto 40px;position:relative;z-index:1}
+  .switcher{position:relative;z-index:1;max-width:920px;margin:0 auto;padding:0 20px 60px}
+  .sec-label{text-align:center;font-size:10px;letter-spacing:2.5px;text-transform:uppercase;color:var(--text-muted);margin-bottom:20px}
+  .tab-bar{display:flex;background:var(--blue-mid);border:1px solid var(--blue-border);border-radius:12px;padding:4px;margin-bottom:20px}
+  .tab-btn{flex:1;padding:11px 14px;border:none;background:transparent;color:var(--text-secondary);font-size:13px;font-weight:500;cursor:pointer;border-radius:9px;transition:all .2s;font-family:inherit}
+  .tab-btn:hover{color:var(--text-primary)}
+  .tab-btn.as{background:var(--accent-single);color:#fff;box-shadow:0 2px 14px rgba(32,168,224,.35)}
+  .tab-btn.am{background:var(--accent-multi);color:#fff;box-shadow:0 2px 14px rgba(224,104,64,.35)}
+  .dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:7px;vertical-align:middle;position:relative;top:-1px}
+  .ds{background:var(--accent-single)}.dm{background:var(--accent-multi)}
+  .as .ds,.am .dm{background:rgba(255,255,255,.8)}
+  .sim-wrap{display:none;flex-direction:column;gap:14px}
+  .sim-wrap.vis{display:flex}
+  .sim-card{background:var(--blue-card);border:1px solid var(--blue-border);border-radius:14px;overflow:hidden}
+  .card-head{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--blue-border);flex-wrap:wrap;gap:8px}
+  .card-title{display:flex;align-items:center;gap:9px}
+  .badge{font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;padding:3px 10px;border-radius:20px}
+  .bs{background:rgba(32,168,224,.15);color:var(--accent-single);border:1px solid rgba(32,168,224,.3)}
+  .bm{background:rgba(224,104,64,.15);color:var(--accent-multi);border:1px solid rgba(224,104,64,.3)}
+  .sim-name{font-size:14px;font-weight:600;color:var(--text-primary)}
+  .open-btn{display:inline-flex;align-items:center;gap:5px;padding:6px 14px;border-radius:8px;border:1px solid var(--blue-border);background:transparent;color:var(--text-secondary);font-size:12px;font-weight:500;cursor:pointer;text-decoration:none;font-family:inherit;transition:all .2s}
+  .open-btn:hover{border-color:var(--gold);color:var(--gold);background:rgba(255,215,0,.05)}
+  .frame-wrap{position:relative;width:100%;height:580px;background:#080818}
+  .frame-wrap iframe{display:block;width:100%;height:100%;border:none}
+  .loader{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:#080818;color:var(--text-muted);font-size:13px;transition:opacity .5s}
+  .loader.hidden{opacity:0;pointer-events:none}
+  .spinner{width:26px;height:26px;border:2px solid var(--blue-border);border-top-color:var(--gold);border-radius:50%;animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .card-desc{padding:12px 18px;font-size:12px;color:var(--text-muted);border-top:1px solid var(--blue-border);line-height:1.6}
+  .info-sec{position:relative;z-index:1;max-width:920px;margin:0 auto;padding:0 20px 60px}
+  .info-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+  .info-card{background:var(--blue-mid);border:1px solid var(--blue-border);border-radius:12px;padding:18px}
+  .info-icon{font-size:20px;margin-bottom:8px}
+  .info-title{font-size:13px;font-weight:600;color:var(--text-primary);margin-bottom:5px}
+  .info-body{font-size:11px;color:var(--text-muted);line-height:1.6}
+  footer{position:relative;z-index:1;text-align:center;padding:22px;border-top:1px solid var(--blue-border);font-size:11px;color:var(--text-muted)}
+  footer strong{color:var(--text-secondary);font-weight:500}
+</style>
+</head>
+<body>
+<canvas id="stars"></canvas>
+<section class="hero">
+  <svg style="display:block;margin:0 auto 24px" width="60" height="60" viewBox="0 0 64 64">
+    <circle cx="32" cy="32" r="13" fill="#ffd700" opacity=".9"/>
+    <circle cx="32" cy="32" r="19" fill="none" stroke="#ffd700" stroke-width="1" opacity=".25"/>
+    <g stroke="#ffd700" stroke-width="1.5" stroke-linecap="round" opacity=".55">
+      <line x1="32" y1="4" x2="32" y2="11"/><line x1="32" y1="53" x2="32" y2="60"/>
+      <line x1="4" y1="32" x2="11" y2="32"/><line x1="53" y1="32" x2="60" y2="32"/>
+      <line x1="13" y1="13" x2="18" y2="18"/><line x1="46" y1="46" x2="51" y2="51"/>
+      <line x1="51" y1="13" x2="46" y2="18"/><line x1="18" y1="46" x2="13" y2="51"/>
+    </g>
+  </svg>
+  <p class="eyebrow">Physics Capstone Project</p>
+  <h1>Solar Cell Capstone:<br><span>What is Stopping Solar?</span></h1>
+  <p class="sub">Interactive simulations exploring photovoltaic efficiency limits</p>
+  <p class="author">By <strong>Jackson Lessing</strong></p>
+</section>
+<div class="divider"></div>
+<section class="switcher">
+  <p class="sec-label">Choose a simulation</p>
+  <div class="tab-bar">
+    <button class="tab-btn as" id="t1"><span class="dot ds"></span>Single-Junction Silicon Cell</button>
+    <button class="tab-btn" id="t2"><span class="dot dm"></span>Multi-Junction Thin-Film Cell</button>
+  </div>
+  <div class="sim-wrap vis" id="w1">
+    <div class="sim-card">
+      <div class="card-head">
+        <div class="card-title">
+          <span class="badge bs">Simulation 1</span>
+          <span class="sim-name">Single-Junction Crystalline Silicon Solar Cell</span>
+        </div>
+        <a class="open-btn" href="single-junction.html" target="_blank">&#8599; Full screen</a>
+      </div>
+      <div class="frame-wrap">
+        <div class="loader" id="l1"><div class="spinner"></div><span>Loading simulation...</span></div>
+        <iframe id="f1" src="single-junction.html" title="Single-Junction Simulation"></iframe>
+      </div>
+      <div class="card-desc">&#9888; Adjust sunlight intensity and cell efficiency (5–33%). The 33% cap reflects the Shockley–Queisser limit — the theoretical maximum for a single p-n junction in crystalline silicon.</div>
+    </div>
+  </div>
+  <div class="sim-wrap" id="w2">
+    <div class="sim-card">
+      <div class="card-head">
+        <div class="card-title">
+          <span class="badge bm">Simulation 2</span>
+          <span class="sim-name">Multi-Junction Thin-Film Solar Cell</span>
+        </div>
+        <a class="open-btn" href="multi-junction.html" target="_blank">&#8599; Full screen</a>
+      </div>
+      <div class="frame-wrap">
+        <div class="loader" id="l2"><div class="spinner"></div><span>Loading simulation...</span></div>
+        <iframe id="f2" src="" data-src="multi-junction.html" title="Multi-Junction Simulation"></iframe>
+      </div>
+      <div class="card-desc">&#9888; Multi-junction cells stack p-n junctions tuned to different photon wavelengths, pushing efficiency beyond the single-junction Shockley–Queisser limit.</div>
+    </div>
+  </div>
+</section>
+<section class="info-sec">
+  <div class="info-grid">
+    <div class="info-card"><div class="info-icon">&#9889;</div><div class="info-title">The Shockley–Queisser Limit</div><div class="info-body">A single-junction silicon cell can convert at most ~33% of sunlight into electricity. Photons below the bandgap are wasted as heat; those above it lose excess energy to thermalization.</div></div>
+    <div class="info-card"><div class="info-icon">&#128161;</div><div class="info-title">Why Multi-Junction?</div><div class="info-body">Stacking junctions with different bandgaps captures a wider slice of the solar spectrum. Concentrator multi-junction cells have exceeded 47% efficiency in lab conditions.</div></div>
+    <div class="info-card"><div class="info-icon">&#127760;</div><div class="info-title">What is Stopping Solar?</div><div class="info-body">Physics sets hard limits, but manufacturing cost, material scarcity, grid integration, and energy storage remain the practical barriers to wider global solar adoption.</div></div>
+  </div>
+</section>
+<footer>Solar Cell Capstone &mdash; <strong>Jackson Lessing</strong> &mdash; Physics</footer>
+<script>
+  (function(){
+    var c=document.getElementById('stars'),ctx=c.getContext('2d'),stars=[];
+    function resize(){c.width=window.innerWidth;c.height=window.innerHeight;}
+    function init(){stars=[];var n=Math.floor(c.width*c.height/5500);for(var i=0;i<n;i++)stars.push({x:Math.random()*c.width,y:Math.random()*c.height,r:Math.random()*1.2+.2,a:Math.random()*.5+.1,sp:Math.random()*.3+.05,ph:Math.random()*Math.PI*2});}
+    var t=0;function draw(){ctx.clearRect(0,0,c.width,c.height);t+=.012;for(var i=0;i<stars.length;i++){var s=stars[i],a=s.a*(.6+.4*Math.sin(t*s.sp+s.ph));ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fillStyle='rgba(200,220,255,'+a+')';ctx.fill();}requestAnimationFrame(draw);}
+    window.addEventListener('resize',function(){resize();init();});
+    resize();init();draw();
+  })();
+  var f1=document.getElementById('f1'),f2=document.getElementById('f2');
+  var l1=document.getElementById('l1'),l2=document.getElementById('l2');
+  f1.addEventListener('load',function(){l1.classList.add('hidden');});
+  f2.addEventListener('load',function(){l2.classList.add('hidden');});
+  var t1=document.getElementById('t1'),t2=document.getElementById('t2');
+  var w1=document.getElementById('w1'),w2=document.getElementById('w2');
+  var loaded=false;
+  t1.addEventListener('click',function(){t1.classList.add('as');t2.classList.remove('am');w1.classList.add('vis');w2.classList.remove('vis');});
+  t2.addEventListener('click',function(){t2.classList.add('am');t1.classList.remove('as');w2.classList.add('vis');w1.classList.remove('vis');if(!loaded){f2.src=f2.getAttribute('data-src');loaded=true;}});
+</script>
+</body>
+</html>
