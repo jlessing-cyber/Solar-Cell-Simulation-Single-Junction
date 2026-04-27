@@ -1,0 +1,1149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;">
+<title>Single-Junction Crystalline Silicon Solar Cell Simulation</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: #0a0a1a;
+    color: #e0e8f0;
+    min-height: 100vh;
+    padding: 16px;
+  }
+
+  h1 {
+    text-align: center;
+    font-size: 20px;
+    font-weight: 500;
+    color: #ffd700;
+    margin-bottom: 4px;
+    letter-spacing: 0.5px;
+  }
+
+  .subtitle {
+    text-align: center;
+    font-size: 12px;
+    color: #8090a8;
+    margin-bottom: 14px;
+  }
+
+  .main-layout {
+    display: flex;
+    gap: 14px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  .left-panel {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .right-panel {
+    width: 230px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  /* Cell canvas area */
+  #cell-container {
+    position: relative;
+    width: 100%;
+    height: 340px;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid #2a3a5a;
+    background: #080818;
+    margin-bottom: 10px;
+  }
+
+  canvas#cellCanvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Power display */
+  .power-card {
+    background: #0d1628;
+    border: 1px solid #2a3a5a;
+    border-radius: 10px;
+    padding: 14px 16px;
+    text-align: center;
+  }
+
+  .power-label {
+    font-size: 11px;
+    color: #6a7f9a;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+  }
+
+  .power-value {
+    font-size: 36px;
+    font-weight: 700;
+    color: #ffd700;
+    line-height: 1;
+    margin-bottom: 2px;
+  }
+
+  .power-unit {
+    font-size: 14px;
+    color: #a0b0c0;
+  }
+
+  .power-bar-wrap {
+    background: #1a2030;
+    border-radius: 6px;
+    height: 8px;
+    margin-top: 10px;
+    overflow: hidden;
+  }
+
+  .power-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #ffd700, #ff8c00);
+    border-radius: 6px;
+    transition: width 0.3s;
+  }
+
+  /* Sliders panel */
+  .controls-card {
+    background: #0d1628;
+    border: 1px solid #2a3a5a;
+    border-radius: 10px;
+    padding: 14px 16px;
+  }
+
+  .controls-card h3 {
+    font-size: 12px;
+    font-weight: 500;
+    color: #6a7f9a;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 12px;
+  }
+
+  .slider-row {
+    margin-bottom: 14px;
+  }
+
+  .slider-row:last-child { margin-bottom: 0; }
+
+  .slider-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 5px;
+  }
+
+  .slider-name {
+    font-size: 12px;
+    color: #c0d0e0;
+    font-weight: 500;
+  }
+
+  .slider-value-badge {
+    font-size: 12px;
+    font-weight: 700;
+    color: #ffd700;
+    background: #1e2d1a;
+    border-radius: 4px;
+    padding: 1px 7px;
+  }
+
+  .slider-unit {
+    font-size: 10px;
+    color: #5a7090;
+    margin-left: 3px;
+  }
+
+  input[type=range] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 5px;
+    background: #1a2535;
+    border-radius: 3px;
+    outline: none;
+    cursor: pointer;
+  }
+
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 15px;
+    height: 15px;
+    background: #ffd700;
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 0 6px #ffd70066;
+  }
+
+  input[type=range]::-moz-range-thumb {
+    width: 15px;
+    height: 15px;
+    background: #ffd700;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+  }
+
+  .slider-range-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 9px;
+    color: #3a5070;
+    margin-top: 2px;
+  }
+
+  /* Legend */
+  .legend-card {
+    background: #0d1628;
+    border: 1px solid #2a3a5a;
+    border-radius: 10px;
+    padding: 12px 14px;
+  }
+
+  .legend-card h3 {
+    font-size: 11px;
+    font-weight: 500;
+    color: #6a7f9a;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 7px;
+    font-size: 11px;
+    color: #b0c0d0;
+  }
+
+  .legend-item:last-child { margin-bottom: 0; }
+
+  .legend-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .legend-rect {
+    width: 14px;
+    height: 10px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+
+  .legend-line {
+    width: 14px;
+    height: 3px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+
+  /* Home power display */
+  .home-card {
+    background: #0d1628;
+    border: 1px solid #2a3a5a;
+    border-radius: 10px;
+    padding: 12px 14px;
+  }
+
+  .home-card h3 {
+    font-size: 11px;
+    font-weight: 500;
+    color: #6a7f9a;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+  }
+
+  .home-svg {
+    display: block;
+    margin: 0 auto 8px;
+  }
+
+  .home-status {
+    text-align: center;
+    font-size: 11px;
+    color: #8090a8;
+  }
+
+  .home-powered { color: #50d890; font-weight: 600; }
+  .home-partial  { color: #ffd700; font-weight: 600; }
+  .home-none     { color: #e05050; font-weight: 600; }
+
+  /* Reset */
+  .reset-btn {
+    width: 100%;
+    padding: 9px;
+    background: transparent;
+    border: 1px solid #3a5070;
+    border-radius: 8px;
+    color: #a0b8d0;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    letter-spacing: 0.5px;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+  }
+
+  .reset-btn:hover {
+    background: #1a2535;
+    border-color: #ffd700;
+    color: #ffd700;
+  }
+
+  .reset-btn:active {
+    transform: scale(0.97);
+  }
+
+  /* Info strip */
+  .info-strip {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .info-pill {
+    flex: 1;
+    background: #0d1628;
+    border: 1px solid #2a3a5a;
+    border-radius: 8px;
+    padding: 8px 10px;
+    text-align: center;
+  }
+
+  .info-pill .label { font-size: 9px; color: #5a7090; text-transform: uppercase; letter-spacing: 0.8px; }
+  .info-pill .val   { font-size: 15px; font-weight: 700; color: #80c8f0; margin-top: 1px; }
+</style>
+</head>
+<body>
+
+<h1>Single-Junction Crystalline Silicon Solar Cell</h1>
+<p class="subtitle">p-n junction photovoltaic simulation &mdash; interactive carrier dynamics</p>
+
+<div class="main-layout">
+
+  <!-- LEFT: Cell canvas + info strip -->
+  <div class="left-panel">
+
+    <div class="info-strip">
+      <div class="info-pill">
+        <div class="label">Photons/s</div>
+        <div class="val" id="info-photons">500</div>
+      </div>
+      <div class="info-pill">
+        <div class="label">Efficiency</div>
+        <div class="val" id="info-efficiency">15%</div>
+      </div>
+      <div class="info-pill">
+        <div class="label">EHP Pairs</div>
+        <div class="val" id="info-ehp">—</div>
+      </div>
+      <div class="info-pill">
+        <div class="label">Open-circuit V</div>
+        <div class="val" id="info-voc">—</div>
+      </div>
+    </div>
+
+    <div id="cell-container">
+      <canvas id="cellCanvas"></canvas>
+    </div>
+
+    <!-- Power output card (below canvas) -->
+    <div class="power-card">
+      <div class="power-label">Electrical Power Output</div>
+      <div>
+        <span class="power-value" id="power-val">0.00</span>
+        <span class="power-unit">W</span>
+      </div>
+      <div class="power-bar-wrap">
+        <div class="power-bar" id="power-bar" style="width:0%"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- RIGHT: controls -->
+  <div class="right-panel">
+
+    <!-- Power card for home -->
+    <div class="home-card">
+      <h3>Home Power Status</h3>
+      <svg class="home-svg" width="100" height="80" viewBox="0 0 100 80">
+        <!-- House -->
+        <polygon points="50,5 95,35 88,35 88,78 12,78 12,35 5,35" fill="none" stroke="#3a5070" stroke-width="1.5"/>
+        <polygon id="roof-fill" points="50,5 95,35 5,35" fill="#1a2535" opacity="0.8"/>
+        <rect id="house-fill" x="12" y="35" width="76" height="43" fill="#1a2535"/>
+        <!-- Door -->
+        <rect x="40" y="55" width="20" height="23" rx="2" fill="#0d1628" stroke="#2a3a5a" stroke-width="1"/>
+        <!-- Windows -->
+        <rect id="win1" x="16" y="42" width="16" height="14" rx="2" fill="#1a2535" stroke="#2a3a5a" stroke-width="0.8"/>
+        <rect id="win2" x="68" y="42" width="16" height="14" rx="2" fill="#1a2535" stroke="#2a3a5a" stroke-width="0.8"/>
+        <!-- Solar panel on roof (small indicator) -->
+        <rect x="35" y="18" width="30" height="12" rx="2" fill="#1a3050" stroke="#3060a0" stroke-width="0.8"/>
+        <!-- Bolts/cells on panel -->
+        <line x1="40" y1="18" x2="40" y2="30" stroke="#3060a0" stroke-width="0.5"/>
+        <line x1="45" y1="18" x2="45" y2="30" stroke="#3060a0" stroke-width="0.5"/>
+        <line x1="50" y1="18" x2="50" y2="30" stroke="#3060a0" stroke-width="0.5"/>
+        <line x1="55" y1="18" x2="55" y2="30" stroke="#3060a0" stroke-width="0.5"/>
+        <line x1="60" y1="18" x2="60" y2="30" stroke="#3060a0" stroke-width="0.5"/>
+        <line x1="35" y1="24" x2="65" y2="24" stroke="#3060a0" stroke-width="0.5"/>
+        <!-- Power lines -->
+        <line id="pwr-line" x1="50" y1="30" x2="50" y2="34" stroke="#3a5070" stroke-width="1.2"/>
+      </svg>
+      <div class="home-status" id="home-status">No power generated</div>
+    </div>
+
+    <!-- Sliders -->
+    <div class="controls-card">
+      <h3>Controls</h3>
+
+      <div class="slider-row">
+        <div class="slider-header">
+          <span class="slider-name">Sunlight Intensity</span>
+          <span><span class="slider-value-badge" id="photon-badge">500</span><span class="slider-unit">photons/s</span></span>
+        </div>
+        <input type="range" id="photon-slider" min="50" max="2000" step="10" value="500">
+        <div class="slider-range-labels"><span>50 (dim)</span><span>2000 (full sun)</span></div>
+      </div>
+
+      <div class="slider-row">
+        <div class="slider-header">
+          <span class="slider-name">Cell Efficiency</span>
+          <span><span class="slider-value-badge" id="eff-badge">15</span><span class="slider-unit">%</span></span>
+        </div>
+        <input type="range" id="eff-slider" min="5" max="33" step="1" value="15">
+        <div class="slider-range-labels"><span>5% (poor)</span><span>33% (Shockley limit)</span></div>
+      </div>
+
+      <button class="reset-btn" id="reset-btn">&#8635; Reset to Defaults</button>
+    </div>
+
+    <!-- Legend -->
+    <div class="legend-card">
+      <h3>Legend</h3>
+      <div class="legend-item">
+        <div class="legend-dot" style="background:#a04020;border:1.5px solid #d06040"></div>
+        Silicon atom (p-type / B-doped)
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot" style="background:#103060;border:1.5px solid #3070b0"></div>
+        Silicon atom (n-type / P-doped)
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot" style="background:#20a8e0"></div>
+        Free electron (e⁻)
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot" style="background:#e06020;border:1.5px solid #ff8844"></div>
+        Hole (h⁺)
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot" style="background:#ffe040;width:12px;height:12px;border-radius:50%;opacity:0.9"></div>
+        Photon
+      </div>
+      <div class="legend-item">
+        <div class="legend-rect" style="background:#1a2a50;border:1px solid #2a4a80"></div>
+        Depletion region
+      </div>
+      <div class="legend-item">
+        <div class="legend-line" style="background:#40c870"></div>
+        Electron current (external)
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   SOLAR CELL SIMULATION
+   Single-junction crystalline silicon p-n junction
+   ============================================================ */
+
+const canvas  = document.getElementById('cellCanvas');
+const ctx     = canvas.getContext('2d');
+const container = document.getElementById('cell-container');
+
+// ---- Layout constants (will be scaled to canvas) ----
+let W, H;
+let CELL_TOP, CELL_BOT, CELL_LEFT, CELL_RIGHT;
+let DEP_Y1, DEP_Y2;
+let P_MID, N_MID;
+
+const ATOM_ROWS_P = 3;
+const ATOM_ROWS_N = 3;
+const ATOM_COLS   = 10;
+
+let atoms = [];  // {x,y,type:'p'|'n'}
+
+// ---- Particle pools ----
+let photons    = [];
+let electrons  = [];
+let holes      = [];
+let extElectrons = []; // external circuit electrons (green)
+
+// ---- Sim state ----
+let photonRate = 500;
+let efficiency = 15;
+let simTime    = 0;
+let lastTime   = null;
+
+const MAX_PHOTONS  = 60;
+const MAX_CARRIERS = 80;
+const MAX_EXT      = 30;
+
+// External circuit path (simplified arc on right side)
+let extPath = [];
+
+// ---- Init ----
+function resize() {
+  const rect = container.getBoundingClientRect();
+  const dpr  = window.devicePixelRatio || 1;
+  canvas.width  = rect.width  * dpr;
+  canvas.height = rect.height * dpr;
+  canvas.style.width  = rect.width  + 'px';
+  canvas.style.height = rect.height + 'px';
+  ctx.scale(dpr, dpr);
+  W = rect.width;
+  H = rect.height;
+
+  CELL_LEFT  = W * 0.08;
+  CELL_RIGHT = W * 0.82;
+  CELL_TOP   = H * 0.06;
+  CELL_BOT   = H * 0.94;
+
+  const cellH = CELL_BOT - CELL_TOP;
+  // Depletion region: center band 12% of cell height
+  DEP_Y1 = CELL_TOP + cellH * 0.46;
+  DEP_Y2 = CELL_TOP + cellH * 0.54;
+  P_MID  = CELL_TOP + cellH * 0.23;
+  N_MID  = CELL_TOP + cellH * 0.77;
+
+  buildAtoms();
+  buildExtPath();
+}
+
+function buildAtoms() {
+  atoms = [];
+  const cellW = CELL_RIGHT - CELL_LEFT;
+  const xPad  = cellW / (ATOM_COLS + 1);
+
+  // P-type atoms (top portion, red-brown)
+  const pZoneH = (DEP_Y1 - CELL_TOP);
+  const pRowH  = pZoneH / (ATOM_ROWS_P + 1);
+  for (let r = 1; r <= ATOM_ROWS_P; r++) {
+    for (let c = 1; c <= ATOM_COLS; c++) {
+      atoms.push({
+        x: CELL_LEFT + xPad * c,
+        y: CELL_TOP  + pRowH * r,
+        type: 'p'
+      });
+    }
+  }
+
+  // N-type atoms (bottom portion, blue)
+  const nZoneH = (CELL_BOT - DEP_Y2);
+  const nRowH  = nZoneH / (ATOM_ROWS_N + 1);
+  for (let r = 1; r <= ATOM_ROWS_N; r++) {
+    for (let c = 1; c <= ATOM_COLS; c++) {
+      atoms.push({
+        x: CELL_LEFT + xPad * c,
+        y: DEP_Y2    + nRowH * r,
+        type: 'n'
+      });
+    }
+  }
+}
+
+function buildExtPath() {
+  // External circuit: top contact -> right side arc -> bottom contact
+  extPath = [];
+  const steps = 60;
+  const rx = CELL_RIGHT, topY = CELL_TOP + 8, botY = CELL_BOT - 8;
+  const arcX = W * 0.95;
+  const midY = (topY + botY) / 2;
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    // Bezier: top-right -> arc-right -> bot-right
+    const x = (1-t)*(1-t)*rx + 2*(1-t)*t*arcX + t*t*rx;
+    const y = (1-t)*(1-t)*topY + 2*(1-t)*t*midY + t*t*botY;
+    extPath.push({x, y});
+  }
+}
+
+// ---- Spawn helpers ----
+function spawnPhoton() {
+  if (photons.length >= MAX_PHOTONS) return;
+  const x = CELL_LEFT + Math.random() * (CELL_RIGHT - CELL_LEFT);
+  photons.push({
+    x,
+    y: 0,
+    vx: (Math.random() - 0.5) * 0.3,
+    vy: H * 0.35 / 60,  // fall to cell top in ~0.35s at 60fps
+    size: 3 + Math.random() * 2,
+    alpha: 0.9,
+    absorbed: false,
+    flashTimer: 0
+  });
+}
+
+function spawnEHP(x, y) {
+  if (electrons.length < MAX_CARRIERS) {
+    electrons.push({
+      x, y,
+      tx: CELL_LEFT + (CELL_RIGHT - CELL_LEFT) * (0.5 + Math.random() * 0.45),
+      ty: CELL_BOT - 4,
+      phase: 'drift',    // drift -> ext -> done
+      extIdx: 0,
+      extDir: 1,
+      speed: 0.8 + Math.random() * 0.4,
+      alpha: 1,
+      trail: []
+    });
+  }
+  if (holes.length < MAX_CARRIERS) {
+    holes.push({
+      x, y,
+      tx: CELL_LEFT + (CELL_RIGHT - CELL_LEFT) * Math.random(),
+      ty: CELL_TOP + 4,
+      speed: 0.6 + Math.random() * 0.3,
+      alpha: 1,
+      recombined: false
+    });
+  }
+}
+
+// ---- Update ----
+function update(dt) {
+  simTime += dt;
+
+  // Spawn photons based on rate
+  const spawnInterval = 1000 / (photonRate * 0.05);
+  if (simTime % spawnInterval < dt * 1000) {
+    const batch = Math.ceil(photonRate / 800);
+    for (let i = 0; i < batch; i++) spawnPhoton();
+  }
+
+  // Update photons
+  for (let i = photons.length - 1; i >= 0; i--) {
+    const p = photons[i];
+    if (p.absorbed) {
+      p.flashTimer -= dt;
+      if (p.flashTimer <= 0) { photons.splice(i, 1); }
+      continue;
+    }
+    p.x += p.vx;
+    p.y += p.vy;
+
+    // Check if photon enters cell
+    if (p.y >= CELL_TOP && p.y <= CELL_BOT &&
+        p.x >= CELL_LEFT && p.x <= CELL_RIGHT) {
+      // Absorption probability depends on efficiency
+      if (Math.random() < efficiency / 100 * 0.9) {
+        p.absorbed = true;
+        p.flashTimer = 0.15;
+        spawnEHP(p.x, p.y);
+      } else {
+        // Passes through
+        if (p.y > CELL_BOT) { photons.splice(i, 1); }
+      }
+    }
+    if (p.y > H + 10 || p.x < -10 || p.x > W + 10) {
+      photons.splice(i, 1);
+    }
+  }
+
+  // Update electrons
+  for (let i = electrons.length - 1; i >= 0; i--) {
+    const e = electrons[i];
+    if (e.phase === 'drift') {
+      // Move toward n-type bottom contact
+      const dx = e.tx - e.x, dy = e.ty - e.y;
+      const dist = Math.sqrt(dx*dx + dy*dy);
+      if (dist < 4) {
+        e.phase = 'ext';
+        e.extIdx = 0;
+      } else {
+        const spd = e.speed * 80;
+        e.x += (dx / dist) * spd * dt;
+        e.y += (dy / dist) * spd * dt;
+        e.trail.push({x: e.x, y: e.y});
+        if (e.trail.length > 6) e.trail.shift();
+      }
+    } else if (e.phase === 'ext') {
+      // Travel along external circuit path
+      e.extIdx += e.speed * 1.5;
+      if (e.extIdx >= extPath.length - 1) {
+        e.phase = 'done';
+      } else {
+        const pi = Math.floor(e.extIdx);
+        const frac = e.extIdx - pi;
+        if (pi + 1 < extPath.length) {
+          e.x = extPath[pi].x + (extPath[pi+1].x - extPath[pi].x) * frac;
+          e.y = extPath[pi].y + (extPath[pi+1].y - extPath[pi].y) * frac;
+        }
+      }
+    } else {
+      // Fade out at top contact (p-side)
+      e.alpha -= dt * 3;
+      if (e.alpha <= 0) { electrons.splice(i, 1); }
+    }
+  }
+
+  // Update holes
+  for (let i = holes.length - 1; i >= 0; i--) {
+    const h = holes[i];
+    if (h.recombined) { holes.splice(i, 1); continue; }
+    const dx = h.tx - h.x, dy = h.ty - h.y;
+    const dist = Math.sqrt(dx*dx + dy*dy);
+    if (dist < 4) {
+      h.alpha -= dt * 2;
+      if (h.alpha <= 0) { holes.splice(i, 1); }
+    } else {
+      const spd = h.speed * 60;
+      h.x += (dx / dist) * spd * dt;
+      h.y += (dy / dist) * spd * dt;
+    }
+  }
+}
+
+// ---- Draw ----
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+
+  drawSky();
+  drawCell();
+  drawAtoms();
+  drawPhotons();
+  drawHoles();
+  drawElectrons();
+  drawLabels();
+  drawExtCircuit();
+  drawContactLabels();
+}
+
+function drawSky() {
+  // Sky gradient above cell
+  const grad = ctx.createLinearGradient(0, 0, 0, CELL_TOP);
+  grad.addColorStop(0, '#050d20');
+  grad.addColorStop(1, '#0a1830');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, CELL_TOP);
+
+  // Sun indicator (top center)
+  const sunX = W * 0.5;
+  const sunY = CELL_TOP * 0.45;
+  const sunR = CELL_TOP * 0.25;
+
+  ctx.beginPath();
+  ctx.arc(sunX, sunY, sunR, 0, Math.PI * 2);
+  ctx.fillStyle = `rgba(255,220,50,${0.2 + (photonRate / 2000) * 0.6})`;
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(sunX, sunY, sunR * 0.6, 0, Math.PI * 2);
+  ctx.fillStyle = `rgba(255,230,80,${0.5 + (photonRate / 2000) * 0.4})`;
+  ctx.fill();
+}
+
+function drawCell() {
+  const cellW = CELL_RIGHT - CELL_LEFT;
+  const cellH = CELL_BOT - CELL_TOP;
+
+  // P-type region (top half)
+  const pGrad = ctx.createLinearGradient(0, CELL_TOP, 0, DEP_Y1);
+  pGrad.addColorStop(0, '#3d1510');
+  pGrad.addColorStop(1, '#2a1008');
+  ctx.fillStyle = pGrad;
+  ctx.fillRect(CELL_LEFT, CELL_TOP, cellW, DEP_Y1 - CELL_TOP);
+
+  // N-type region (bottom half)
+  const nGrad = ctx.createLinearGradient(0, DEP_Y2, 0, CELL_BOT);
+  nGrad.addColorStop(0, '#0a1828');
+  nGrad.addColorStop(1, '#0d2040');
+  ctx.fillStyle = nGrad;
+  ctx.fillRect(CELL_LEFT, DEP_Y2, cellW, CELL_BOT - DEP_Y2);
+
+  // Depletion/space charge region
+  const depGrad = ctx.createLinearGradient(0, DEP_Y1, 0, DEP_Y2);
+  depGrad.addColorStop(0, '#2a1030');
+  depGrad.addColorStop(0.5, '#1a1838');
+  depGrad.addColorStop(1, '#0a1848');
+  ctx.fillStyle = depGrad;
+  ctx.fillRect(CELL_LEFT, DEP_Y1, cellW, DEP_Y2 - DEP_Y1);
+
+  // Built-in electric field arrows in depletion region
+  const depMidY = (DEP_Y1 + DEP_Y2) / 2;
+  const arrowCount = 6;
+  for (let i = 0; i < arrowCount; i++) {
+    const ax = CELL_LEFT + (cellW / (arrowCount + 1)) * (i + 1);
+    drawArrow(ax, DEP_Y2 - 4, ax, DEP_Y1 + 4, 'rgba(180,140,255,0.35)', 1.5);
+  }
+  ctx.font = `${Math.max(8, H*0.022)}px sans-serif`;
+  ctx.fillStyle = 'rgba(160,120,220,0.6)';
+  ctx.textAlign = 'right';
+  ctx.fillText('E-field →', CELL_LEFT - 4, depMidY + 3);
+
+  // Cell border
+  ctx.strokeStyle = '#4a6080';
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(CELL_LEFT, CELL_TOP, cellW, cellH);
+
+  // Top metal contact (p-side)
+  ctx.fillStyle = '#c8a820';
+  ctx.fillRect(CELL_LEFT, CELL_TOP, cellW, 4);
+
+  // Bottom metal contact (n-side)
+  ctx.fillStyle = '#c8a820';
+  ctx.fillRect(CELL_LEFT, CELL_BOT - 4, cellW, 4);
+
+  // Depletion boundary lines
+  ctx.setLineDash([4, 3]);
+  ctx.strokeStyle = 'rgba(160,100,255,0.4)';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(CELL_LEFT, DEP_Y1); ctx.lineTo(CELL_RIGHT, DEP_Y1); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(CELL_LEFT, DEP_Y2); ctx.lineTo(CELL_RIGHT, DEP_Y2); ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+function drawAtoms() {
+  const r = Math.max(5, W * 0.012);
+  for (const a of atoms) {
+    ctx.beginPath();
+    ctx.arc(a.x, a.y, r, 0, Math.PI * 2);
+    if (a.type === 'p') {
+      ctx.fillStyle = '#7a2a12';
+      ctx.strokeStyle = '#c05030';
+    } else {
+      ctx.fillStyle = '#0e2848';
+      ctx.strokeStyle = '#2060a0';
+    }
+    ctx.fill();
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Atom symbol
+    ctx.fillStyle = a.type === 'p' ? '#e08060' : '#60a0e0';
+    ctx.font = `bold ${Math.max(7, r * 0.9)}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('Si', a.x, a.y);
+  }
+  ctx.textBaseline = 'alphabetic';
+}
+
+function drawPhotons() {
+  for (const p of photons) {
+    if (p.absorbed) {
+      // Flash ring on absorption
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 8 * (1 - p.flashTimer / 0.15) + 4, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(255,230,50,${p.flashTimer / 0.15})`;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      continue;
+    }
+    // Glow
+    const grd = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size * 2.5);
+    grd.addColorStop(0, `rgba(255,235,60,${p.alpha})`);
+    grd.addColorStop(1, 'rgba(255,200,0,0)');
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size * 2.5, 0, Math.PI * 2);
+    ctx.fillStyle = grd;
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(255,240,80,${p.alpha})`;
+    ctx.fill();
+  }
+}
+
+function drawElectrons() {
+  for (const e of electrons) {
+    if (e.phase === 'ext') {
+      // External circuit: green
+      ctx.beginPath();
+      ctx.arc(e.x, e.y, 4, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(60,210,100,${e.alpha})`;
+      ctx.fill();
+    } else if (e.phase === 'drift') {
+      // Blue electrons inside cell
+      for (let t = 0; t < e.trail.length; t++) {
+        const a = (t / e.trail.length) * 0.4;
+        ctx.beginPath();
+        ctx.arc(e.trail[t].x, e.trail[t].y, 2.5, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(50,180,230,${a})`;
+        ctx.fill();
+      }
+      ctx.beginPath();
+      ctx.arc(e.x, e.y, 4, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(30,160,220,${e.alpha})`;
+      ctx.fill();
+      // e⁻ label
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 7px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('e⁻', e.x, e.y);
+      ctx.textBaseline = 'alphabetic';
+    } else {
+      ctx.beginPath();
+      ctx.arc(e.x, e.y, 4, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(60,210,100,${e.alpha})`;
+      ctx.fill();
+    }
+  }
+}
+
+function drawHoles() {
+  for (const h of holes) {
+    ctx.beginPath();
+    ctx.arc(h.x, h.y, 4, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(220,100,30,${h.alpha})`;
+    ctx.strokeStyle = `rgba(255,140,60,${h.alpha})`;
+    ctx.lineWidth = 1.2;
+    ctx.fill();
+    ctx.stroke();
+    // h⁺ label
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 7px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('h⁺', h.x, h.y);
+    ctx.textBaseline = 'alphabetic';
+  }
+}
+
+function drawLabels() {
+  const cellW = CELL_RIGHT - CELL_LEFT;
+  const fs = Math.max(10, H * 0.032);
+  ctx.font = `bold ${fs}px sans-serif`;
+  ctx.textAlign = 'left';
+
+  // P-type label (left of cell)
+  ctx.fillStyle = '#d07050';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('p-type', CELL_LEFT + 6, P_MID);
+
+  // N-type label
+  ctx.fillStyle = '#5090d0';
+  ctx.fillText('n-type', CELL_LEFT + 6, N_MID);
+
+  // Depletion region label
+  const depMidY = (DEP_Y1 + DEP_Y2) / 2;
+  ctx.fillStyle = 'rgba(180,130,255,0.8)';
+  ctx.font = `${Math.max(8, H * 0.025)}px sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.fillText('Space Charge Region', CELL_LEFT + cellW * 0.5, depMidY);
+  ctx.fillText('(Depletion Region)', CELL_LEFT + cellW * 0.5, depMidY + Math.max(9, H * 0.026));
+
+  // Boron / Phosphorus dopant labels
+  ctx.font = `${Math.max(8, H * 0.022)}px sans-serif`;
+  ctx.fillStyle = 'rgba(200,100,70,0.6)';
+  ctx.textAlign = 'right';
+  ctx.fillText('B-doped (acceptors)', CELL_RIGHT - 6, P_MID + fs * 1.3);
+
+  ctx.fillStyle = 'rgba(70,140,210,0.6)';
+  ctx.fillText('P-doped (donors)', CELL_RIGHT - 6, N_MID + fs * 1.3);
+
+  ctx.textBaseline = 'alphabetic';
+}
+
+function drawExtCircuit() {
+  if (extPath.length < 2) return;
+
+  // Draw external wire
+  ctx.beginPath();
+  ctx.moveTo(extPath[0].x, extPath[0].y);
+  for (const pt of extPath) ctx.lineTo(pt.x, pt.y);
+  ctx.strokeStyle = 'rgba(60,200,100,0.4)';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([5, 3]);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Home load icon (light bulb)
+  const midPt = extPath[Math.floor(extPath.length * 0.48)];
+  drawBulb(midPt.x + 6, midPt.y);
+
+  // Arrows on wire
+  const arrowPositions = [0.2, 0.6, 0.85];
+  for (const frac of arrowPositions) {
+    const idx  = Math.floor(frac * (extPath.length - 2));
+    const p0   = extPath[idx], p1 = extPath[idx + 1];
+    const ang  = Math.atan2(p1.y - p0.y, p1.x - p0.x);
+    const midX = (p0.x + p1.x) / 2, midY = (p0.y + p1.y) / 2;
+    drawArrowHead(midX, midY, ang, 'rgba(60,200,100,0.6)', 6);
+  }
+}
+
+function drawBulb(cx, cy) {
+  const power = computePower();
+  const glow  = Math.min(1, power / 50);
+  const r = 8;
+
+  if (glow > 0.05) {
+    ctx.beginPath();
+    ctx.arc(cx, cy, r * 2.5, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(255,240,100,${glow * 0.3})`;
+    ctx.fill();
+  }
+
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fillStyle = glow > 0.1
+    ? `rgba(255,240,80,${0.5 + glow * 0.5})`
+    : '#1a2030';
+  ctx.strokeStyle = '#c0a030';
+  ctx.lineWidth = 1;
+  ctx.fill();
+  ctx.stroke();
+}
+
+function drawContactLabels() {
+  const fs = Math.max(8, H * 0.022);
+  ctx.font = `${fs}px sans-serif`;
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+
+  ctx.fillStyle = '#c8a820';
+  ctx.fillText('(+) p-contact', CELL_RIGHT + 4, CELL_TOP + 2);
+
+  ctx.fillStyle = '#c8a820';
+  ctx.fillText('(−) n-contact', CELL_RIGHT + 4, CELL_BOT - 2);
+
+  ctx.textBaseline = 'alphabetic';
+}
+
+// ---- Arrow helpers ----
+function drawArrow(x1, y1, x2, y2, color, lw) {
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = lw;
+  ctx.stroke();
+  const ang = Math.atan2(y2 - y1, x2 - x1);
+  drawArrowHead(x2, y2, ang, color, 5);
+}
+
+function drawArrowHead(x, y, angle, color, size) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(angle);
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.lineTo(-size, -size * 0.5);
+  ctx.lineTo(-size, size * 0.5);
+  ctx.closePath();
+  ctx.fillStyle = color;
+  ctx.fill();
+  ctx.restore();
+}
+
+// ---- Power calc ----
+function computePower() {
+  const solarConstant = 1000; // W/m² at full intensity (2000 photons)
+  const cellArea = 0.01;      // 0.01 m² (100 cm²)
+  const normalizedIntensity = photonRate / 2000;
+  const incomingPower = solarConstant * normalizedIntensity * cellArea;
+  return incomingPower * (efficiency / 100);
+}
+
+function updateUI() {
+  const power = computePower();
+  document.getElementById('power-val').textContent = power.toFixed(2);
+  document.getElementById('power-bar').style.width = Math.min(100, (power / 3.3) * 100).toFixed(1) + '%';
+  document.getElementById('info-photons').textContent = photonRate;
+  document.getElementById('info-efficiency').textContent = efficiency + '%';
+
+  const ehp = Math.round(efficiency / 100 * photonRate * 0.4);
+  document.getElementById('info-ehp').textContent = ehp;
+
+  const voc = (0.5 + (efficiency - 5) / 80).toFixed(3);
+  document.getElementById('info-voc').textContent = voc + ' V';
+
+  // Home status
+  const homeStatus = document.getElementById('home-status');
+  const win1 = document.getElementById('win1');
+  const win2 = document.getElementById('win2');
+  if (power < 0.3) {
+    homeStatus.innerHTML = '<span class="home-none">No power</span>';
+    win1.setAttribute('fill', '#1a2535'); win2.setAttribute('fill', '#1a2535');
+  } else if (power < 1.5) {
+    homeStatus.innerHTML = '<span class="home-partial">Partial power</span>';
+    win1.setAttribute('fill', '#6a6010'); win2.setAttribute('fill', '#1a2535');
+  } else {
+    homeStatus.innerHTML = '<span class="home-powered">Fully powered!</span>';
+    win1.setAttribute('fill', '#d0b820'); win2.setAttribute('fill', '#d0b820');
+  }
+}
+
+// ---- Reset ----
+function resetAll() {
+  photonRate = 500;
+  efficiency = 15;
+  document.getElementById('photon-slider').value = 500;
+  document.getElementById('eff-slider').value    = 15;
+  document.getElementById('photon-badge').textContent = '500';
+  document.getElementById('eff-badge').textContent    = '15';
+  photons = []; electrons = []; holes = []; extElectrons = [];
+  simTime = 0; lastTime = null;
+  updateUI();
+}
+
+// ---- Slider & button events ----
+document.getElementById('photon-slider').addEventListener('input', function() {
+  photonRate = parseInt(this.value);
+  document.getElementById('photon-badge').textContent = photonRate;
+  updateUI();
+});
+
+document.getElementById('eff-slider').addEventListener('input', function() {
+  efficiency = parseInt(this.value);
+  document.getElementById('eff-badge').textContent = efficiency;
+  updateUI();
+});
+
+document.getElementById('reset-btn').addEventListener('click', resetAll);
+
+// ---- Main loop ----
+function loop(ts) {
+  if (!lastTime) lastTime = ts;
+  const dt = Math.min((ts - lastTime) / 1000, 0.05);
+  lastTime = ts;
+
+  update(dt);
+  draw();
+  updateUI();
+
+  requestAnimationFrame(loop);
+}
+
+// ---- Boot ----
+window.addEventListener('resize', () => {
+  resize();
+  buildExtPath();
+});
+
+resize();
+updateUI();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
